@@ -81,6 +81,25 @@ class MongrelSpawner < Spawner
   end
 end
 
+class ThinSpawner < Spawner
+  def self.spawn(port)
+    cmd =
+      "thin start -d " +
+      "-a #{OPTIONS[:address]} " +
+      "-p #{port} " +
+      "-P #{OPTIONS[:pids]}/#{OPTIONS[:process]}.#{port}.pid " +
+      "-e #{OPTIONS[:environment]} " +
+      "-c #{OPTIONS[:rails_root]} " +
+      "-l #{OPTIONS[:rails_root]}/log/thin.log " +
+      "--prefix #{OPTIONS[:prefix]}"
+    system(cmd)
+  end
+
+  def self.can_bind_to_custom_address?
+    true
+  end
+end
+
 
 begin
   require_library_or_gem 'fcgi'
@@ -94,11 +113,19 @@ rescue Exception
   # Mongrel not available
 end
 
+begin
+  require_library_or_gem 'thin'
+rescue Exception
+  # Thin not available
+end
+
 server = case ARGV.first
-  when "fcgi", "mongrel"
+  when "fcgi", "mongrel", "thin"
     ARGV.shift
   else
-    if defined?(Mongrel)
+    if defined?(Thin)
+      "thin"
+    elsif defined?(Mongrel)
       "mongrel"
     elsif RUBY_PLATFORM !~ /(:?mswin|mingw)/ && !silence_stderr { `spawn-fcgi -version` }.blank? && defined?(FCGI)
       "fcgi"
@@ -112,8 +139,11 @@ case server
   when "mongrel"
     puts "=> Starting mongrel dispatchers"
     spawner_class = MongrelSpawner
+  when "thin"
+    puts "=> Starting thin dispatchers"
+    spawner_class = ThinSpawner
   else
-    puts "Neither FCGI (spawn-fcgi) nor Mongrel was installed and available!"
+    puts "Neither FCGI (spawn-fcgi) nor Mongrel nor Thin was installed and available!"
     exit(0)
 end
 
@@ -171,6 +201,8 @@ ARGV.options do |opts|
                              # using FCGI.
        spawner mongrel -i 5  # starts instances on 8000, 8001, 8002,
                              # 8003, and 8004 using Mongrel.
+       spawner thin -i 5     # starts instances on 8000, 8001, 8002,
+                             # 8003, and 8004 using Thin.
        spawner -p 9100 -i 10 # starts 10 instances counting from 9100 to
                              # 9109 using Mongrel if available.
        spawner -p 9100 -r 5  # starts 3 instances counting from 9100 to

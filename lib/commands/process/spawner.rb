@@ -91,7 +91,7 @@ class ThinSpawner < Spawner
       "-e #{OPTIONS[:environment]} " +
       "-c #{OPTIONS[:rails_root]} " +
       "-l #{OPTIONS[:rails_root]}/log/thin.log "
-      cmd << "--prefix #{OPTIONS[:prefix]}" if !OPTION[:prefix].nil?
+      cmd << "--prefix #{OPTIONS[:prefix]}" if !OPTIONS[:prefix].nil?
     system(cmd)
   end
 
